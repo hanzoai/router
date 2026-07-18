@@ -3,7 +3,7 @@ name = "hanzo-router"
 version = "0.1.1"
 edition = "2021"
 description = "Memory- and engine-aware model router — the native companion to hanzo-ml/hanzo-engine that hanzo-node uses to route requests across local + cloud models."
-repository = "https://github.com/hanzoai/engine"
+repository = "https://github.com/hanzoai/router"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
@@ -13,14 +13,14 @@ serde_yaml = "0.9"
 
 # `proxy` front (replica load-balancing HTTP server): the async/HTTP stack is
 # pulled only when the feature is on, so the pure router core stays light.
-axum = { workspace = true, optional = true }
-tokio = { workspace = true, optional = true }
-reqwest = { workspace = true, optional = true, features = ["stream", "json"] }
-futures = { workspace = true, optional = true }
-tracing = { workspace = true, optional = true }
-tracing-subscriber = { workspace = true, optional = true }
-clap = { workspace = true, optional = true }
-anyhow = { workspace = true, optional = true }
+axum = { version = "0.8.8", optional = true }
+tokio = { version = "1.49", features = ["full", "rt-multi-thread"], optional = true }
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "charset", "http2", "stream", "json"], optional = true }
+futures = { version = "0.3", optional = true }
+tracing = { version = "0.1", optional = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter"], optional = true }
+clap = { version = "4.5", features = ["derive"], optional = true }
+anyhow = { version = "1", optional = true }
 
 [features]
 proxy = [
@@ -40,3 +40,6 @@ path = "src/bin/proxy.rs"
 required-features = ["proxy"]
 
 [dev-dependencies]
+
+# Standalone repo: never inherit a parent workspace.
+[workspace]
