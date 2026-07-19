@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 pub mod decision;
+pub mod field;
 
 use hanzo_router::registry::{Level, Modality, Task};
 use router_learner::policy::DK;

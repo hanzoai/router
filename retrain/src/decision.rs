@@ -207,7 +207,10 @@ pub struct Scores {
     pub holdout_reward: f64,
 }
 
-fn pure_slo() -> Slo {
+/// The pure-quality SLO (`lambda = mu = 0`): the fairest test of "did it learn quality
+/// routing", and — for the mean-field proof — the SLO under which the load term is the
+/// *only* latency-awareness in the score.
+pub fn pure_slo() -> Slo {
     Slo {
         lambda_cost: 0.0,
         mu_latency: 0.0,
