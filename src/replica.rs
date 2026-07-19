@@ -129,6 +129,40 @@ impl ReplicaSet {
         least.map(|n| Lease::acquire(n.clone()))
     }
 
+    /// Total in-flight requests across the set's replicas — the numerator of
+    /// [`Self::load`], exposed for the admin surface.
+    pub fn inflight_total(&self) -> usize {
+        let inner = self.inner.read().unwrap();
+        inner
+            .nodes
+            .values()
+            .map(|n| n.inflight.load(Ordering::Acquire))
+            .sum()
+    }
+
+    /// Normalized load in `[0, 1]`: in-flight / (healthy replicas x [`Self::max_inflight`]).
+    /// Zero when idle, approaching one as the set saturates. This is the per-arm load a
+    /// mean-field (load-aware) *model* router best-responds to — the live analogue of the
+    /// offline harness's simulated load vector. All-unhealthy reads as fully loaded (`1.0`):
+    /// an arm with no capacity is maximally congested.
+    pub fn load(&self) -> f64 {
+        let inner = self.inner.read().unwrap();
+        let healthy = inner
+            .nodes
+            .values()
+            .filter(|n| n.healthy.load(Ordering::Acquire))
+            .count();
+        if healthy == 0 {
+            return 1.0;
+        }
+        let inflight: usize = inner
+            .nodes
+            .values()
+            .map(|n| n.inflight.load(Ordering::Acquire))
+            .sum();
+        (inflight as f64 / (healthy * self.max_inflight) as f64).min(1.0)
+    }
+
     /// Set a replica's health, rebuilding the ring only on a real transition.
     /// Absent id is a no-op.
     pub fn set_health(&self, id: &str, healthy: bool) {
@@ -305,6 +339,20 @@ impl Balancer {
         m
     }
 
+    /// The live per-model load field: `model id -> normalized in-flight load`
+    /// ([`ReplicaSet::load`]). This is the arm-load vector the mean-field router reads
+    /// (`ROUTER_FIELD`) so model selection best-responds to real congestion — the
+    /// serving-path source that the offline proof simulates. Keyed the same as the
+    /// model ids the head ranks; a model with no set reads as unloaded downstream.
+    pub fn load_field(&self) -> BTreeMap<String, f64> {
+        self.sets
+            .read()
+            .unwrap()
+            .iter()
+            .map(|(m, s)| (m.clone(), s.load()))
+            .collect()
+    }
+
     pub fn statuses(&self) -> BTreeMap<String, Vec<ReplicaStatus>> {
         self.sets
             .read()
@@ -410,6 +458,33 @@ mod tests {
         let set = bal.set_for(Some("qwen3")).unwrap();
         assert_eq!(set.len(), 2);
         assert_eq!(bal.models(), vec!["qwen3"]);
+    }
+
+    #[test]
+    fn load_tracks_inflight_over_capacity() {
+        // 2 replicas x max_inflight 2 = capacity 4.
+        let set = ReplicaSet::new([Replica::new("http://a"), Replica::new("http://b")], 2);
+        assert_eq!(set.load(), 0.0, "idle set is unloaded");
+        let _l1 = set.pick("k").unwrap();
+        let _l2 = set.pick("k").unwrap();
+        assert_eq!(set.inflight_total(), 2);
+        assert!((set.load() - 0.5).abs() < 1e-9, "2 in-flight / cap 4 = 0.5");
+        // losing a healthy replica halves capacity -> same in-flight reads busier.
+        set.mark_unhealthy("http://b");
+        assert!((set.load() - 1.0).abs() < 1e-9, "2 in-flight / cap 2 = 1.0");
+    }
+
+    #[test]
+    fn balancer_load_field_maps_each_model() {
+        let bal = Balancer::new(4);
+        bal.register("hot", Replica::new("http://h"));
+        bal.register("cold", Replica::new("http://c"));
+        let hot = bal.set_for(Some("hot")).unwrap();
+        let _a = hot.pick("k").unwrap();
+        let _b = hot.pick("k").unwrap(); // 2 in-flight / cap 4 = 0.5
+        let field = bal.load_field();
+        assert!((field["hot"] - 0.5).abs() < 1e-9);
+        assert_eq!(field["cold"], 0.0);
     }
 
     #[test]
