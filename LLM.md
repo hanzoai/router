@@ -17,14 +17,14 @@ wrapper repos link OUT to this; never duplicate the impl. One impl, one place (D
 ## Build / run
 - `cargo test` — pure core. `cargo test --features proxy` — + the proxy front.
 - Proxy binary: `cargo run --features proxy --bin hanzo-router -- --model M --replica URL ...`
-- Learned heads: `cargo run -p router-retrain --bin router-fit -- --events E.jsonl --out H.safetensors`
+- Learned heads: a serve bundle mounted with `ROUTER_HEADS=<path>` (`src/heads.rs`).
 
 ## Key entry points
 - `src/lib.rs` — public API (`route`, `load_policy`), module map.
 - `src/policy.rs` — `Policy::select` (Reuse → LoadLocal → Cloud → NoFit).
 - `src/route.rs` — `RoutePolicy` seam (mechanism vs. learned brain).
 - `src/proxy.rs` + `src/bin/proxy.rs` — the replica proxy front.
-- `learner/` (enso brain) · `retrain/` (router-fit + eval) · `heads/` (serve bundle).
+- `src/heads.rs` — the heads bundle a learned policy serves from, and the mean-field load term.
 
 ## Brand rules (hard — enforce in all docs)
 - **Never** call Hanzo an "LLM gateway" or position vs LiteLLM. It is a routing core

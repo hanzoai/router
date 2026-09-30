@@ -102,23 +102,16 @@ let policy = hanzo_router::load_policy("prefer:\n  cheap_chat: [gpt-4o-mini]\n")
 
 ## Learned routing heads
 
-`heads/router.heads.json` is the servable bundle. Fit it from eval events (per-prompt,
-per-arm outcomes with real prompt text):
-
-```bash
-cargo run --release -p router-retrain --bin router-fit -- \
-  --events <events.jsonl> --out heads.safetensors --gamma 0.1
-```
-
-`gamma` is picked by held-out **decision quality** (mean realized correctness of the
-chosen arm, prompt-level splits, multi-seed). See [`heads/README.md`](heads/README.md).
+A learned policy is a serve bundle of ridge-fit heads (`src/heads.rs`: one matrix `W`
+and the arm profiles). The engine mounts one with `ROUTER_HEADS=<path>`
+(`Policy::load_heads`); unset, routing uses the rule-based policy.
 
 ## Load-aware routing (mean-field)
 
 The optional load field (`ROUTER_FIELD`, **default OFF**, fully reversible) makes routing
 congestion-aware. On the real counterfactual corpus (2,984 events / 373 prompts, 8 arms),
 load-awareness cuts hot-arm concentration and tail latency at ~zero quality cost — the
-Wardrop-equilibrium claim holds. Full result: [`docs/mean-field-result.md`](docs/mean-field-result.md).
+Wardrop-equilibrium claim holds.
 Recommended deployment `gamma` in `[0.05, 0.2]`.
 
 ## Replica proxy (`proxy` feature)
@@ -210,9 +203,7 @@ router does exactly this.
 
 | Crate | Role |
 |-------|------|
-| `hanzo-router` (root) | the mechanism — registry, SLO gate, policy seam, proxy front |
-| `learner` (`router-learner`) | **enso** — the learned, eval-trained, per-user-adaptive routing policy (the brain) |
-| `retrain` (`router-retrain`) | nightly heads retrain: routing ledger → ridge-fit heads → holdout-gate → persist |
+| `hanzo-router` (root) | the mechanism — registry, SLO gate, policy seam, heads loader, proxy front |
 
 ## Tests
 

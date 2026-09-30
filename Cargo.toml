@@ -41,8 +41,5 @@ required-features = ["proxy"]
 
 [dev-dependencies]
 
-# Standalone repo: never inherit a parent workspace. learner = the offline fit
-# library (featurizer re-exported from the router so fit and serve share one
-# implementation); retrain = the router-fit tool + decision-quality eval.
+# Standalone repo: never inherit a parent workspace.
 [workspace]
-members = ["learner", "retrain"]
