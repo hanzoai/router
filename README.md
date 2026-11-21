@@ -1,5 +1,7 @@
 # Hanzo Router
 
+[![Open in Hanzo](https://hanzo.app/badges/open-in-hanzo.svg)](https://hanzo.app/dev/open?repo=github.com/hanzoai/router&ref=main&action=open) [![Edit with Hanzo](https://hanzo.app/badges/edit-with-hanzo.svg)](https://hanzo.app/dev/open?repo=github.com/hanzoai/router&ref=main&action=edit)
+
 **Pure-Rust model-routing core** — memory- and engine-aware, pure logic over value inputs.
 
 `hanzo-router` is the native routing brain that [`hanzo-node`](https://github.com/hanzoai/node)
